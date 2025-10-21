@@ -1,12 +1,25 @@
 import SwiftUI
 import ClipKit
 import UIKit
+import CoreLocation
 
 @available(iOS 17.0, *)
 struct LocationClippingsView: View {
-    let group: LocationGroup
+    // 核心数据：可能是一个分组，也可能是单个item（内部转为分组处理）
+    private let group: LocationGroup
     
     @Environment(\.dismiss) private var dismiss
+    
+    // 支持两种初始化方式：接收分组 或 单个item
+    init(group: LocationGroup) {
+        self.group = group
+    }
+    
+    init(pasteboardItem: PasteboardItem) {
+        // 将单个item包装为一个分组（复用现有逻辑）
+        let coordinate = pasteboardItem.location?.coordinate ?? CLLocationCoordinate2D()
+        self.group = LocationGroup(coordinate: coordinate, items: [pasteboardItem])
+    }
     
     private var sortedItems: [PasteboardItem] {
         group.items.sorted { $0.date > $1.date }

@@ -187,7 +187,7 @@ class HistoryViewController: UITableViewController
                 
                 let standardAppearance = navigationBar.standardAppearance
                 standardAppearance.configureWithOpaqueBackground()
-                standardAppearance.backgroundColor = .clipLightPantone
+                standardAppearance.backgroundColor = .clipLightPink
                 standardAppearance.titleTextAttributes = attributes
                 standardAppearance.largeTitleTextAttributes = attributes
                 standardAppearance.shadowImage = nil
@@ -665,7 +665,7 @@ private extension HistoryViewController
     func makeGradientView() -> GradientView
     {
         let gradientView = GradientView()
-        gradientView.colors = [.clipLightPantone, .clipPantone]
+        gradientView.colors = [.clipLightPink, .clipPink]
         return gradientView
     }
     

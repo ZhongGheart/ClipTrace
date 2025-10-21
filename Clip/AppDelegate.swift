@@ -22,7 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Override point for customization after application launch.
         print(RoxasVersionNumber)
         
-        self.window?.tintColor = .clipPantone
+        self.window?.tintColor = .clipPink
         
         UserDefaults.shared.registerAppDefaults()
         

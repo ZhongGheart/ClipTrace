@@ -15,19 +15,18 @@ import ClipKit
 @available(iOS 17, *)
 class ClippingsMapViewController: UIHostingController<AnyView>
 {
-    @MainActor 
+    @MainActor
     required dynamic init?(coder aDecoder: NSCoder) {
         let view = AnyView(erasing: ClippingsMapView().environment(\.managedObjectContext, DatabaseManager.shared.persistentContainer.viewContext))
         super.init(coder: aDecoder, rootView: view)
         
         self.tabBarItem.image = UIImage(systemName: "map")
-        self.tabBarItem.title = NSLocalizedString("Map", comment: "标签栏中“地图”功能的名称")
     }
 }
 
-// 2. 修改地图视图，实现按位置分组显示
 @MainActor @available(iOS 17, *)
-struct ClippingsMapView: View {
+struct ClippingsMapView: View
+{
     @FetchRequest(fetchRequest: PasteboardItem.historyFetchRequest())
     private var pasteboardItems: FetchedResults<PasteboardItem>
     
@@ -36,24 +35,39 @@ struct ClippingsMapView: View {
         groupItemsByLocation()
     }
     
+    
+    // 选中的单个item
+    @State private var selectedItem: PasteboardItem?
+    // 选中item所属的组（新增）
     @State private var selectedGroup: LocationGroup?
     
     var body: some View {
-        Map(selection: $selectedGroup) {
-            ForEach(locationGroups) { group in
-                Marker(
-                    "\(group.count) 条记录",
-                    systemImage: "paperclip.circle.fill",
-                    coordinate: group.coordinate
-                )
-                .tint(Color(UIColor.clipPink))
+        Map(selection: $selectedItem) {
+            // Must use \.self as keypath for selection to work
+            ForEach(pasteboardItems, id: \.self) { pasteboardItem in
+                if let location = pasteboardItem.location
+                {
+                    Marker(pasteboardItem.date.formatted(), systemImage: "paperclip", coordinate: location.coordinate)
+                }
             }
         }
+        // 监听选中item的变化，查找其所属的组
+        .onChange(of: selectedItem) { item in
+            guard let item = item else {
+                selectedGroup = nil
+                return
+            }
+            // 遍历分组，找到包含当前item的组（通过objectID精准匹配）
+            selectedGroup = locationGroups.first { group in
+                group.items.contains { $0.objectID == item.objectID }
+            }
+        }
+        // 根据找到的组展示弹窗
         .sheet(item: $selectedGroup) { group in
             LocationClippingsView(group: group)
         }
-        .navigationTitle(NSLocalizedString("Location History", comment: "地图视图标题"))
     }
+    
     
     // 按位置分组，考虑一定的坐标误差范围
     private func groupItemsByLocation(tolerance: CLLocationDegrees = 0.001) -> [LocationGroup] {
@@ -67,7 +81,7 @@ struct ClippingsMapView: View {
             if let existingIndex = groups.firstIndex(where: { group in
                 let distance = CLLocation(latitude: group.coordinate.latitude, longitude: group.coordinate.longitude)
                     .distance(from: location)
-                return distance < 100 // 100米以内视为同一位置
+                return distance < 10 // 1米以内视为同一位置
             }) {
                 // 添加到现有分组
                 var updatedGroup = groups[existingIndex]
