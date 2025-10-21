@@ -1,0 +1,38 @@
+/* 
+  Localizable.strings
+  Clip
+
+  Created by 杨进 on 2025/10/19.
+  Copyright © 2025 Riley Testut. All rights reserved.
+*/
+// Localizable.strings (Chinese, Simplified)
+"CFBundleDisplayName" = "剪迹"; // 中文应用名称
+// LocationManager.swift
+"Clip requires “Always” location permission." = "Clip需要“始终允许”位置权限。";
+"Please grant Clip “Always” location permission in Settings so it can run in the background indefinitely." = "请在设置中授予Clip“始终允许”位置权限，以便其在后台持续运行。";
+"Open Settings" = "打开设置";
+
+// PasteboardMonitor.swift
+"Clipboard Changed" = "剪贴板已更新";
+"Swipe down to save to Clip." = "下拉以保存到Clip";
+
+// ApplicationMonitor.swift
+"Failed to Monitor Clipboard" = "监控剪贴板失败";
+"App Stopped Running" = "应用已停止运行";
+"Tap this notification to resume monitoring your clipboard." = "点击此通知以恢复剪贴板监控";
+
+// AppDelegate.swift
+"Failed to Save Clipboard" = "保存剪贴板失败";
+
+"List" = "列表"; // 标签栏中“列表”功能的名称
+"Map" = "地图"; // 标签栏中“地图”功能的名称
+
+"History Limit" = "历史记录限制"; // 设置中“历史记录限制”选项的标题
+"Location" = "位置"; // 设置中“位置”选项的标题
+"Settings" = "设置"; // 设置功能入口的标题
+
+"Text" = "文本";
+"URL" = "链接";
+"Image" = "图片";
+"Tile" = "拼贴";
+"Clip" = "Clip";

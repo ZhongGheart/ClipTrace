@@ -1,0 +1,30 @@
+
+/* Class = "UILabel"; text = "50 items"; ObjectID = "8Oa-Oe-o26"; */
+"8Oa-Oe-o26.text" = "50 条";
+
+/* Class = "UILabel"; text = "25 items"; ObjectID = "GzS-pv-T1w"; */
+"GzS-pv-T1w.text" = "25 条";
+
+/* Class = "UINavigationItem"; title = "Settings"; ObjectID = "HV4-i9-lJF"; */
+"HV4-i9-lJF.title" = "设置";
+
+/* Class = "UINavigationItem"; title = "Clip"; ObjectID = "KPM-hY-RHG"; */
+"KPM-hY-RHG.title" = "Clip";
+
+/* Class = "UITabBarItem"; title = "List"; ObjectID = "PKr-yJ-H3B"; */
+"PKr-yJ-H3B.title" = "List";
+
+/* Class = "UITableViewSection"; headerTitle = "Keep Last…"; ObjectID = "ZjM-l8-6S4"; */
+"ZjM-l8-6S4.headerTitle" = "最近保留…";
+
+/* Class = "UILabel"; text = "Show Location Icons"; ObjectID = "lvN-fC-K1r"; */
+"lvN-fC-K1r.text" = "显示位置图标";
+
+/* Class = "UILabel"; text = "10 items"; ObjectID = "qhf-EU-e1i"; */
+"qhf-EU-e1i.text" = "10 条";
+
+/* Class = "UILabel"; text = "100 items"; ObjectID = "vAN-CH-YFA"; */
+"vAN-CH-YFA.text" = "100 条";
+
+/* Class = "UITabBarItem"; title = "Map"; ObjectID = "zZh-lg-wou"; */
+"zZh-lg-wou.title" = "Map";
