@@ -270,6 +270,50 @@ class HistoryViewController: UITableViewController, UIPopoverPresentationControl
         //        tableView.addGestureRecognizer(doubleTap)
         // 允许单击和双击并存
         //        tableView.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer })?.require(toFail: doubleTap)
+        // 初始化搜索控制器
+        let searchController = RSTSearchController(searchResultsController: nil)
+        searchController.searchableKeyPaths = ["textRepresentation", "urlRepresentation"]
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = NSLocalizedString("Search clippings...", comment: "")
+
+        // 修改搜索控制器的searchHandler配置（核心修复）
+        searchController.searchHandler = { [weak self] searchValue, previousSearchValue in
+            guard let self = self else {
+                return RSTBlockOperation(executionBlock: { _ in })
+            }
+            
+            // 1. 提取并清理搜索文本（确保非nil）
+            let searchText = searchValue.text ?? ""
+            let trimmedText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // 2. 生成安全的谓词（绝对不包含nil）
+            let predicate: NSPredicate
+            if trimmedText.isEmpty {
+                // 空搜索：匹配所有结果
+                predicate = NSPredicate(value: true)
+            } else {
+                // 非空搜索：使用清理后的文本作为参数（确保非nil）
+                predicate = NSPredicate(
+                    format: "textRepresentation CONTAINS[c] %@ OR urlRepresentation CONTAINS[c] %@",
+                    trimmedText,  // 参数1：非nil
+                    trimmedText   // 参数2：非nil（根据你的可搜索字段调整）
+                )
+            }
+            
+            // 3. 应用谓词并刷新
+            self.dataSource.predicate = nil  // 先清除旧谓词
+            self.dataSource.predicate = predicate
+            self.tableView.reloadData()
+            
+            // 处理空状态（可选）
+            if self.dataSource.fetchedResultsController.fetchedObjects?.isEmpty ?? true {
+                self.showEmptyState(message: trimmedText.isEmpty ? "No clippings" : "No results")
+            } else {
+                self.hideEmptyState()
+            }
+            
+            return RSTBlockOperation(executionBlock: { _ in })
+        }
         
         // 新增：将搜索栏添加到导航栏
         if #available(iOS 13.0, *) {
@@ -280,13 +324,71 @@ class HistoryViewController: UITableViewController, UIPopoverPresentationControl
             // iOS 12 及以下适配（可选）
             tableView.tableHeaderView = searchController.searchBar
         }
-        
+        definesPresentationContext = true
+
         setupNavigationBar()
         setupLongPressGesture()
         
         self.startUpdating()
     }
     
+    func isValidPredicate(_ predicate: NSPredicate) -> Bool {
+        // 递归处理复合谓词
+        if let compound = predicate as? NSCompoundPredicate {
+            return compound.subpredicates.allSatisfy { $0 is NSPredicate && isValidPredicate($0 as! NSPredicate) }
+        } else if let comparison = predicate as? NSComparisonPredicate {
+            // 验证左表达式（键路径）
+            let leftIsValid = isValidExpression(comparison.leftExpression, isKeyPath: true)
+            // 验证右表达式（常量）
+            let rightIsValid = isValidExpression(comparison.rightExpression, isKeyPath: false)
+            return leftIsValid && rightIsValid
+        }
+        return false
+    }
+
+    // 辅助方法：通过 expressionType 判断表达式类型
+    private func isValidExpression(_ expression: NSExpression, isKeyPath: Bool) -> Bool {
+        if isKeyPath {
+            // 键路径表达式的类型是 .keyPath
+            return expression.expressionType == .keyPath && isValidKeyPath(expression.keyPath)
+        } else {
+            // 常量表达式的类型是 .constantValue
+            return expression.expressionType == .constantValue && isValidConstantValue(expression.constantValue)
+        }
+    }
+
+    // 验证键路径是否合法（替换为你的模型实际属性）
+    private func isValidKeyPath(_ keyPath: String) -> Bool {
+        // 使用 contains 方法的正确语法：数组.contains(元素)
+        return ["textRepresentation", "urlRepresentation", "tags.name"].contains(keyPath)
+    }
+    // 验证常量值是否合法
+    private func isValidConstantValue(_ value: Any?) -> Bool {
+        // 常量值必须是字符串，且非空、非空白
+        guard let strValue = value as? String else { return false }
+        let trimmed = strValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty
+    }
+    // 添加到 HistoryViewController 类的 private 扩展或合适位置
+    private func showEmptyState(message: String) {
+        // 创建空状态标签
+        let emptyLabel = UILabel(frame: CGRect(x: 0, y: 0, width: tableView.bounds.width, height: tableView.bounds.height))
+        emptyLabel.text = message
+        emptyLabel.textAlignment = .center
+        emptyLabel.textColor = .secondaryLabel
+        emptyLabel.numberOfLines = 0 // 支持多行文本
+        emptyLabel.lineBreakMode = .byWordWrapping
+        
+        // 设置空状态为表格背景
+        tableView.backgroundView = emptyLabel
+        tableView.separatorStyle = .none // 隐藏分隔线
+    }
+
+    private func hideEmptyState() {
+        // 恢复原始背景（渐变视图）
+        tableView.backgroundView = makeGradientView()
+        tableView.separatorStyle = .singleLine // 恢复分隔线
+    }
     // 双击手势处理（可选，与上面的handleCellTap配合使用）
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: tableView)
@@ -1203,49 +1305,52 @@ extension HistoryViewController {
 extension HistoryViewController {
     // 删除原有的第一个 applyFilters() 方法，保留并完善以下实现
     private func applyFilters() {
-        // 1. 基础请求：排除已标记删除的项
         let fetchRequest = PasteboardItem.historyFetchRequest()
         fetchRequest.relationshipKeyPathsForPrefetching = [#keyPath(PasteboardItem.preferredRepresentation), #keyPath(PasteboardItem.tags)]
         
-        // 2. 构建筛选谓词数组
         var predicates = [NSPredicate(format: "%K == NO", #keyPath(PasteboardItem.isMarkedForDeletion))]
         
-        // 3. 标签筛选（多选）
+        // 标签筛选（确保tag非nil）
         if !currentFilterTags.isEmpty {
-            let tagPredicates = currentFilterTags.map { tag in
-                NSPredicate(format: "ANY tags == %@", tag as CVarArg)
+            let tagPredicates = currentFilterTags.compactMap { $0 as? NSManagedObject }.map { tag in
+                NSPredicate(format: "ANY tags == %@", tag) // 确保tag是有效的NSManagedObject
             }
-            predicates.append(NSCompoundPredicate(andPredicateWithSubpredicates: tagPredicates))
+            if !tagPredicates.isEmpty {
+                predicates.append(NSCompoundPredicate(andPredicateWithSubpredicates: tagPredicates))
+            }
         }
         
-        // 4. 内容类型筛选
+        // 正确写法：移除对非可选类型的条件绑定
         if let contentTypeFilter = currentContentTypeFilter {
-            predicates.append(NSPredicate(format: "contentTypeRawValue == %@", contentTypeFilter.rawValue))
+            let rawValue = contentTypeFilter.rawValue as CVarArg // 直接转换，非可选
+            predicates.append(NSPredicate(format: "contentTypeRawValue == %@", rawValue))
         }
         
-        // 5. 搜索筛选（匹配内容或标签名）
-        if let searchText = searchController.searchBar.text, !searchText.isEmpty {
-            let textPredicate = NSPredicate(format: "ANY representations.value CONTAINS[c] %@", searchText)
-            let tagNamePredicate = NSPredicate(format: "ANY tags.name CONTAINS[c] %@", searchText)
-            predicates.append(NSCompoundPredicate(orPredicateWithSubpredicates: [textPredicate, tagNamePredicate]))
+        // 搜索筛选（复用手动构建的安全谓词）
+        let searchText = searchController.searchBar.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !searchText.isEmpty {
+            let textPredicate = NSPredicate(
+                format: "textRepresentation CONTAINS[c] %@ OR urlRepresentation CONTAINS[c] %@ OR ANY tags.name CONTAINS[c] %@",
+                searchText, searchText, searchText
+            )
+            predicates.append(textPredicate)
         }
         
-        // 6. 应用谓词并更新排序
-        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        // 应用最终谓词
+        fetchRequest.predicate = predicates.isEmpty ? nil : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
         fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \PasteboardItem.date, ascending: false)]
         
-        // 7. 重新初始化数据源并刷新表格
+        // 重新初始化数据源
         dataSource = RSTFetchedResultsTableViewPrefetchingDataSource<PasteboardItem, UIImage>(
             fetchRequest: fetchRequest,
             managedObjectContext: DatabaseManager.shared.persistentContainer.viewContext
         )
-        // 复用原有单元格配置逻辑
         dataSource.cellConfigurationHandler = makeDataSource().cellConfigurationHandler
         dataSource.prefetchHandler = makeDataSource().prefetchHandler
         dataSource.prefetchCompletionHandler = makeDataSource().prefetchCompletionHandler
         dataSource.placeholderView = makeDataSource().placeholderView
         
-        // 8. 绑定数据源并刷新
+        // 刷新数据
         tableView.dataSource = dataSource
         tableView.prefetchDataSource = dataSource
         do {

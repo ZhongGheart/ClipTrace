@@ -1114,6 +1114,7 @@
 				CODE_SIGN_ENTITLEMENTS = Clip/Clip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 87LZSRWT9X;
 				INFOPLIST_FILE = Clip/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -1141,6 +1142,7 @@
 				CODE_SIGN_ENTITLEMENTS = Clip/Clip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 87LZSRWT9X;
 				INFOPLIST_FILE = Clip/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

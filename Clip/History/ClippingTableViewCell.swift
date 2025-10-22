@@ -115,4 +115,43 @@ class ClippingTableViewCell: UITableViewCell
             ])
         }
     }
+    
+    // 在ClippingTableViewCell中添加标签展示视图
+    func configure(with item: PasteboardItem) {
+        // ... 现有配置代码 ...
+        
+        // 显示标签
+        let tagStack = UIStackView()
+        tagStack.axis = .horizontal
+        tagStack.spacing = 4
+        tagStack.translatesAutoresizingMaskIntoConstraints = false
+        
+        for tag in item.tags {
+            let tagView = UIView()
+            tagView.backgroundColor = UIColor(hex: tag.color)
+            tagView.layer.cornerRadius = 10
+            tagView.widthAnchor.constraint(greaterThanOrEqualToConstant: 20).isActive = true
+            
+            let label = UILabel()
+            label.text = tag.name
+            label.font = UIFont.systemFont(ofSize: 12)
+            label.textColor = .white
+            label.translatesAutoresizingMaskIntoConstraints = false
+            
+            tagView.addSubview(label)
+            NSLayoutConstraint.activate([
+                label.centerXAnchor.constraint(equalTo: tagView.centerXAnchor),
+                label.centerYAnchor.constraint(equalTo: tagView.centerYAnchor),
+                label.leadingAnchor.constraint(greaterThanOrEqualTo: tagView.leadingAnchor, constant: 8),
+                label.trailingAnchor.constraint(lessThanOrEqualTo: tagView.trailingAnchor, constant: -8),
+                tagView.heightAnchor.constraint(equalToConstant: 20)
+            ])
+            
+            tagStack.addArrangedSubview(tagView)
+        }
+        
+        contentView.addSubview(tagStack)
+        // 添加适当的约束
+    }
+    
 }

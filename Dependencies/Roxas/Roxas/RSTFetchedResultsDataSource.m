@@ -14,6 +14,7 @@
 
 #import "RSTHelperFile.h"
 
+
 static void *RSTFetchedResultsDataSourceContext = &RSTFetchedResultsDataSourceContext;
 
 
@@ -31,22 +32,59 @@ NS_ASSUME_NONNULL_END
 
 @implementation RSTProxyPredicate
 
+//- (instancetype)initWithPredicate:(nullable NSPredicate *)predicate externalPredicate:(nullable NSPredicate *)externalPredicate
+//{
+//    NSMutableArray *subpredicates = [NSMutableArray array];
+//    
+//    if (externalPredicate != nil)
+//    {
+//        [subpredicates addObject:externalPredicate];
+//    }
+//    
+//    if (predicate != nil)
+//    {
+//        [subpredicates addObject:predicate];
+//    }
+//    
+//    self = [super initWithType:NSAndPredicateType subpredicates:subpredicates];
+//    return self;
+//}
+
 - (instancetype)initWithPredicate:(nullable NSPredicate *)predicate externalPredicate:(nullable NSPredicate *)externalPredicate
 {
     NSMutableArray *subpredicates = [NSMutableArray array];
     
-    if (externalPredicate != nil)
-    {
+    // 仅添加非nil且合法的谓词
+    if (externalPredicate != nil && [self isPredicateValid:externalPredicate]) {
         [subpredicates addObject:externalPredicate];
     }
-    
-    if (predicate != nil)
-    {
+    if (predicate != nil && [self isPredicateValid:predicate]) {
         [subpredicates addObject:predicate];
     }
     
-    self = [super initWithType:NSAndPredicateType subpredicates:subpredicates];
+    // 若没有有效谓词，使用“匹配所有”的安全谓词
+    if (subpredicates.count == 0) {
+        self = [super initWithType:NSAndPredicateType subpredicates:@[[NSPredicate predicateWithValue:YES]]];
+    } else {
+        self = [super initWithType:NSAndPredicateType subpredicates:subpredicates];
+    }
     return self;
+}
+
+// 校验谓词是否合法（例如不包含nil参数）
+- (BOOL)isPredicateValid:(NSPredicate *)predicate
+{
+    // 简单实现：检查谓词是否为nil，或是否包含非法参数（可根据实际场景扩展）
+    if (predicate == nil) return NO;
+    
+    // 更严格的校验：解析谓词表达式，检查是否有nil常量（示例逻辑）
+    if ([predicate isKindOfClass:[NSComparisonPredicate class]]) {
+        NSComparisonPredicate *comparisonPredicate = (NSComparisonPredicate *)predicate;
+        if (comparisonPredicate.rightExpression.constantValue == nil) {
+            return NO; // 右侧值为nil，非法
+        }
+    }
+    return YES;
 }
 
 @end
@@ -57,6 +95,11 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RSTFetchedResultsDataSource ()
 
 @property (nonatomic, copy, nullable) NSPredicate *externalPredicate;
+
+@property (nonatomic, copy) BOOL (^predicateValidationHandler)(NSPredicate *predicate);
+
+// 添加方法声明
+- (BOOL)isPredicateValid:(NSPredicate *)predicate;
 
 @end
 
@@ -141,15 +184,39 @@ NS_ASSUME_NONNULL_END
     }
 }
 
+//- (void)filterContentWithPredicate:(nullable NSPredicate *)predicate
+//{
+//    RSTProxyPredicate *proxyPredicate = [[RSTProxyPredicate alloc] initWithPredicate:predicate externalPredicate:self.externalPredicate];
+//    self.fetchedResultsController.fetchRequest.predicate = proxyPredicate;
+//    
+//    NSError *error = nil;
+//    if (![self.fetchedResultsController performFetch:&error])
+//    {
+//        ELog(error);
+//    }
+//}
+
 - (void)filterContentWithPredicate:(nullable NSPredicate *)predicate
 {
-    RSTProxyPredicate *proxyPredicate = [[RSTProxyPredicate alloc] initWithPredicate:predicate externalPredicate:self.externalPredicate];
-    self.fetchedResultsController.fetchRequest.predicate = proxyPredicate;
+    // 强制使用安全谓词
+//    NSPredicate *safePredicate = [PredicateSafetyChecker safePredicateFrom:predicate];
     
-    NSError *error = nil;
-    if (![self.fetchedResultsController performFetch:&error])
-    {
-        ELog(error);
+//    self.fetchedResultsController.fetchRequest.predicate = safePredicate;
+    
+    // 先使用内部默认校验
+    BOOL isPredicateValid = [self isPredicateValid:predicate];
+    // 若上层提供了自定义校验，覆盖结果
+    if (self.predicateValidationHandler) {
+        isPredicateValid = self.predicateValidationHandler(predicate);
+    }
+    
+    // 使用校验后的谓词
+    NSPredicate *safePredicate = isPredicateValid ? predicate : [NSPredicate predicateWithValue:YES];
+    RSTProxyPredicate *proxyPredicate = [[RSTProxyPredicate alloc] initWithPredicate:safePredicate externalPredicate:self.externalPredicate];
+
+    NSError *error;
+    if (![self.fetchedResultsController performFetch:&error]) {
+        NSLog(@"CoreData fetch error: %@", error);
     }
 }
 
@@ -168,6 +235,8 @@ NS_ASSUME_NONNULL_END
         self.externalPredicate = predicate;
         
         RSTProxyPredicate *proxyPredicate = [[RSTProxyPredicate alloc] initWithPredicate:self.predicate externalPredicate:self.externalPredicate];
+
+        
         [[(NSFetchedResultsController *)object fetchRequest] setPredicate:proxyPredicate];
     }
 }
@@ -369,6 +438,21 @@ NS_ASSUME_NONNULL_END
     
     NSUInteger itemCount = self.fetchedResultsController.fetchedObjects.count;
     return itemCount;
+}
+
+// 实现谓词校验方法
+- (BOOL)isPredicateValid:(NSPredicate *)predicate
+{
+    // 复用 RSTProxyPredicate 中的校验逻辑
+    if (predicate == nil) return NO;
+    
+    if ([predicate isKindOfClass:[NSComparisonPredicate class]]) {
+        NSComparisonPredicate *comparisonPredicate = (NSComparisonPredicate *)predicate;
+        if (comparisonPredicate.rightExpression.constantValue == nil) {
+            return NO; // 右侧值为nil，非法
+        }
+    }
+    return YES;
 }
 
 @end
