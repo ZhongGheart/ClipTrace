@@ -36,3 +36,8 @@
 "Image" = "图片";
 "Tile" = "拼贴";
 "Clip" = "Clip";
+
+"Save" = "保存";
+"Ignore" = "忽略";
+"Copy" = "立即复制";
+

@@ -69,6 +69,12 @@
 		EC14859A2EA5D9210063BB44 /* CollageContentExtractor.swift in Resources */ = {isa = PBXBuildFile; fileRef = EC1485992EA5D9210063BB44 /* CollageContentExtractor.swift */; };
 		EC14859B2EA5DB980063BB44 /* CollageContentExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1485992EA5D9210063BB44 /* CollageContentExtractor.swift */; };
 		EC14859C2EA5DB980063BB44 /* CollageEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC1485972EA5D7810063BB44 /* CollageEditorViewController.swift */; };
+		ECFECFD62EA7D34B00311139 /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFD52EA7D34900311139 /* Tag.swift */; };
+		ECFECFD82EA7D3E200311139 /* ContentIdentifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFD72EA7D3DF00311139 /* ContentIdentifier.swift */; };
+		ECFECFDC2EA7D54D00311139 /* TagEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFDB2EA7D54900311139 /* TagEditorViewController.swift */; };
+		ECFECFDE2EA7DD7D00311139 /* TagFilterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFDD2EA7DD7B00311139 /* TagFilterViewController.swift */; };
+		ECFECFE22EA7F8AB00311139 /* UIColor+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFE12EA7F8AB00311139 /* UIColor+Hex.swift */; };
+		ECFECFE32EA8543100311139 /* UIColor+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECFECFE12EA7F8AB00311139 /* UIColor+Hex.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -226,6 +232,11 @@
 		EC1485952EA4DC5E0063BB44 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		EC1485972EA5D7810063BB44 /* CollageEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollageEditorViewController.swift; sourceTree = "<group>"; };
 		EC1485992EA5D9210063BB44 /* CollageContentExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollageContentExtractor.swift; sourceTree = "<group>"; };
+		ECFECFD52EA7D34900311139 /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
+		ECFECFD72EA7D3DF00311139 /* ContentIdentifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentIdentifier.swift; sourceTree = "<group>"; };
+		ECFECFDB2EA7D54900311139 /* TagEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagEditorViewController.swift; sourceTree = "<group>"; };
+		ECFECFDD2EA7DD7B00311139 /* TagFilterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFilterViewController.swift; sourceTree = "<group>"; };
+		ECFECFE12EA7F8AB00311139 /* UIColor+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIColor+Hex.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -269,6 +280,7 @@
 		BF0BDE5422B4568A00E1419D /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				ECFECFD72EA7D3DF00311139 /* ContentIdentifier.swift */,
 				EC13F6DB2EA734B10027833B /* PasteboardItem+Extensions.swift */,
 				BF0BDE5522B456A600E1419D /* PasteboardItem+ActivityItemSource.swift */,
 				BF770E6122BC767A002A40FE /* UIDevice+Vibration.swift */,
@@ -425,6 +437,7 @@
 		BFC1F39B22AF0D0E003AC21A /* Clip */ = {
 			isa = PBXGroup;
 			children = (
+				ECFECFDA2EA7D53500311139 /* Tags */,
 				BFC9E62C22B18D5900974663 /* Clip.entitlements */,
 				BFC1F39C22AF0D0E003AC21A /* AppDelegate.swift */,
 				BF8F76F2254CC0E0005AF18B /* SceneDelegate.swift */,
@@ -470,6 +483,7 @@
 		BFC9E67322B2C6C500974663 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				ECFECFE12EA7F8AB00311139 /* UIColor+Hex.swift */,
 				BFC9E67B22B2CA4400974663 /* CFNotification+PasteboardListener.swift */,
 				BFC9E67122B2C4C400974663 /* Result+Conveniences.swift */,
 				BF0BDE5722B4757100E1419D /* UserDefaults+App.swift */,
@@ -486,6 +500,7 @@
 		BFC9E67A22B2C85C00974663 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				ECFECFD52EA7D34900311139 /* Tag.swift */,
 				BF1D5D4322B0867C0062F474 /* Model.xcdatamodeld */,
 				BF1D5D4A22B094DB0062F474 /* PasteboardItem.swift */,
 				BF1D5D4822B088F40062F474 /* PasteboardItemRepresentation.swift */,
@@ -514,6 +529,15 @@
 				D5D375142BAB330200213D84 /* ClippingSheet.swift */,
 			);
 			path = "Map View";
+			sourceTree = "<group>";
+		};
+		ECFECFDA2EA7D53500311139 /* Tags */ = {
+			isa = PBXGroup;
+			children = (
+				ECFECFDD2EA7DD7B00311139 /* TagFilterViewController.swift */,
+				ECFECFDB2EA7D54900311139 /* TagEditorViewController.swift */,
+			);
+			path = Tags;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -749,21 +773,25 @@
 			buildActionMask = 2147483647;
 			files = (
 				EC14859B2EA5DB980063BB44 /* CollageContentExtractor.swift in Sources */,
+				ECFECFDE2EA7DD7D00311139 /* TagFilterViewController.swift in Sources */,
 				EC14859C2EA5DB980063BB44 /* CollageEditorViewController.swift in Sources */,
 				BF1D5C7F22B02BF30062F474 /* PasteboardMonitor.swift in Sources */,
 				BFA714BA22C53F1700EE7236 /* ApplicationMonitor.swift in Sources */,
 				BFDB5B1E22EF7B5000F74113 /* GradientView.swift in Sources */,
 				EC13F6DA2EA732930027833B /* LocationGroup.swift in Sources */,
+				ECFECFDC2EA7D54D00311139 /* TagEditorViewController.swift in Sources */,
 				BFC1F39F22AF0D0E003AC21A /* HistoryViewController.swift in Sources */,
 				BFF9E4932555F4F40052B1B2 /* LocationManager.swift in Sources */,
 				D5D375152BAB330200213D84 /* ClippingSheet.swift in Sources */,
 				BF8F76F3254CC0E0005AF18B /* SceneDelegate.swift in Sources */,
+				ECFECFD82EA7D3E200311139 /* ContentIdentifier.swift in Sources */,
 				EC13F6D72EA730E90027833B /* ClippingDetailView.swift in Sources */,
 				D534428E2BAB202700E133EE /* ClippingsMapView.swift in Sources */,
 				BF770E6522BC7688002A40FE /* UIDevice+Vibration.swift in Sources */,
 				BFC1F39D22AF0D0E003AC21A /* AppDelegate.swift in Sources */,
 				BFEF44AE2398693300095A92 /* ForwardingNavigationController.swift in Sources */,
 				BF0BDE5622B456A600E1419D /* PasteboardItem+ActivityItemSource.swift in Sources */,
+				ECFECFE32EA8543100311139 /* UIColor+Hex.swift in Sources */,
 				BFAC49D522B2EDB20011E7C4 /* ClippingTableViewCell.swift in Sources */,
 				EC13F6DC2EA734B60027833B /* PasteboardItem+Extensions.swift in Sources */,
 				BFAD2C4A257AD4D600FF9532 /* PublishedPipeline.swift in Sources */,
@@ -776,6 +804,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ECFECFE22EA7F8AB00311139 /* UIColor+Hex.swift in Sources */,
 				BFA2DF69247DD31500E31E4D /* UIColor+Clip.swift in Sources */,
 				BF0BDE5E22B47D4900E1419D /* UserDefaults+App.swift in Sources */,
 				BFC9E67C22B2CA4400974663 /* CFNotification+PasteboardListener.swift in Sources */,
@@ -788,6 +817,7 @@
 				BFC9E66522B1B04000974663 /* Model.xcdatamodeld in Sources */,
 				BFAD46CB249058DE00451D6F /* SwitchKeyboardButton.swift in Sources */,
 				BFC9E67222B2C4C500974663 /* Result+Conveniences.swift in Sources */,
+				ECFECFD62EA7D34B00311139 /* Tag.swift in Sources */,
 				BFA2DF6B247DE47900E31E4D /* Preview.swift in Sources */,
 				BFA2DF62247DD23C00E31E4D /* Blur.swift in Sources */,
 				BF7B9EE122B81C980042C873 /* Int+Bytes.swift in Sources */,

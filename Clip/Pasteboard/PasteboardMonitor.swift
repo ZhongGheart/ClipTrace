@@ -118,3 +118,71 @@ private extension PasteboardMonitor
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["ClipboardChanged"])
     }
 }
+
+// Clip/Pasteboard/PasteboardMonitor.swift
+private extension PasteboardMonitor {
+    
+    // 检查重复内容
+    private func checkForDuplicateContent() -> Bool {
+        guard let itemProvider = UIPasteboard.general.itemProviders.first else { return false }
+        
+        let context = DatabaseManager.shared.persistentContainer.viewContext
+        let fetchRequest = PasteboardItem.fetchRequest() as NSFetchRequest<PasteboardItem>
+        fetchRequest.predicate = NSPredicate(format: "%K == NO", #keyPath(PasteboardItem.isMarkedForDeletion))
+        
+        do {
+            let existingItems = try context.fetch(fetchRequest)
+            for item in existingItems {
+                if item.isDuplicate(of: itemProvider) {
+                    return true
+                }
+            }
+        } catch {
+            print("检查重复内容失败: \(error)")
+        }
+        return false
+    }
+    
+    // 配置通知内容
+    private func configureNotificationContent(_ content: UNMutableNotificationContent, isDuplicate: Bool) {
+        if let text = UIPasteboard.general.string {
+            // 文本内容预览（限制长度）
+            let previewText = text.count > 100 ? String(text.prefix(100)) + "..." : text
+            content.body = isDuplicate
+                ? NSLocalizedString("已保存过，是否覆盖？", comment: "")
+                : previewText
+        } else if UIPasteboard.general.hasImages {
+            // 图片内容提示
+            content.body = isDuplicate
+                ? NSLocalizedString("图片已保存过，是否覆盖？", comment: "")
+                : NSLocalizedString("检测到图片，点击保存", comment: "")
+        } else {
+            // 其他类型内容
+            content.body = isDuplicate
+                ? NSLocalizedString("内容已保存过，是否覆盖？", comment: "")
+                : NSLocalizedString("检测到新内容，点击保存", comment: "")
+        }
+    }
+    
+    // 创建通知附件（如图片缩略图）
+    private func createNotificationAttachment() -> UNNotificationAttachment? {
+        guard UIPasteboard.general.hasImages, let image = UIPasteboard.general.image else {
+            return nil
+        }
+        
+        // 处理图片缩略图
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = UUID().uuidString + ".png"
+        let fileURL = tempDir.appendingPathComponent(fileName)
+        
+        guard let data = image.pngData() else { return nil }
+        
+        do {
+            try data.write(to: fileURL)
+            return try UNNotificationAttachment(identifier: "image", url: fileURL)
+        } catch {
+            print("创建图片附件失败: \(error)")
+            return nil
+        }
+    }
+}

@@ -15,5 +15,4 @@ public extension UIColor
     
     static let clipPantone  = UIColor(named: "Pantone", in: Bundle(for: DatabaseManager.self), compatibleWith: nil)!
     static let clipLightPantone = UIColor(named: "LightPantone", in: Bundle(for: DatabaseManager.self), compatibleWith: nil)!
-
 }

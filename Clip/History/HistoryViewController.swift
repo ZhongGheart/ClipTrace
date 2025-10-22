@@ -15,7 +15,7 @@ import Contacts
 import ClipKit
 import Roxas
 
-class HistoryViewController: UITableViewController
+class HistoryViewController: UITableViewController, UIPopoverPresentationControllerDelegate, UISearchResultsUpdating
 {
     private var dataSource: RSTFetchedResultsTableViewPrefetchingDataSource<PasteboardItem, UIImage>!
     
@@ -35,6 +35,34 @@ class HistoryViewController: UITableViewController
     
     // 在HistoryViewController类中添加以下属性
     private var isMultiSelectMode: Bool = false
+    // 新增：分组模式控制
+    private var isGroupedByType: Bool = false // 是否按内容类型分组
+    private lazy var groupingButton: UIBarButtonItem = { // 分组切换按钮
+        let button = UIBarButtonItem(
+            title: NSLocalizedString("分组", comment: ""),
+            style: .plain,
+            target: self,
+            action: #selector(toggleGrouping)
+        )
+        return button
+    }()
+    
+    // 新增：搜索控制器（联合搜索功能）
+    private lazy var searchController: UISearchController = {
+        let searchVC = UISearchController(searchResultsController: nil)
+        searchVC.searchResultsUpdater = self // 绑定搜索更新代理
+        searchVC.obscuresBackgroundDuringPresentation = false // 搜索时不模糊背景
+        searchVC.searchBar.placeholder = NSLocalizedString("Search clippings or tags...", comment: "搜索剪贴内容或标签")
+        searchVC.searchBar.tintColor = .white // 搜索栏文字颜色
+        searchVC.searchBar.barTintColor = .clipLightPink // 搜索栏背景色
+        return searchVC
+    }()
+    
+    // 新增：筛选条件存储
+    private var currentFilterTags: [Tag] = [] // 当前选中的筛选标签
+    private var currentContentTypeFilter: PasteboardItem.ContentType? // 当前选中的内容类型筛选
+    
+    
     private var selectedIndexPaths: Set<IndexPath> = []
     private var multiSelectBarButtonItem: UIBarButtonItem!
     private var cancelBarButtonItem: UIBarButtonItem!
@@ -237,19 +265,28 @@ class HistoryViewController: UITableViewController
         collageButton.isEnabled = false
         
         // 如需支持双击，添加双击手势（可选）
-//        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
-//        doubleTap.numberOfTapsRequired = 2
-//        tableView.addGestureRecognizer(doubleTap)
+        //        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
+        //        doubleTap.numberOfTapsRequired = 2
+        //        tableView.addGestureRecognizer(doubleTap)
         // 允许单击和双击并存
-//        tableView.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer })?.require(toFail: doubleTap)
+        //        tableView.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer })?.require(toFail: doubleTap)
         
+        // 新增：将搜索栏添加到导航栏
+        if #available(iOS 13.0, *) {
+            navigationItem.searchController = searchController
+            // 滚动时不隐藏搜索栏（可选，根据需求调整）
+            navigationItem.hidesSearchBarWhenScrolling = false
+        } else {
+            // iOS 12 及以下适配（可选）
+            tableView.tableHeaderView = searchController.searchBar
+        }
         
         setupNavigationBar()
         setupLongPressGesture()
         
         self.startUpdating()
     }
-
+    
     // 双击手势处理（可选，与上面的handleCellTap配合使用）
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: tableView)
@@ -406,6 +443,19 @@ class HistoryViewController: UITableViewController
             target: self,
             action: #selector(openSettings)
         )
+        // 新增：分组按钮（放在左侧）
+        navigationItem.leftBarButtonItem = groupingButton
+        
+        // 3. 新增：标签筛选按钮（导航栏右侧，在设置按钮左边）
+        let tagFilterButton = UIBarButtonItem(
+            image: UIImage(systemName: "tag"), // 标签图标
+            style: .plain,
+            target: self,
+            action: #selector(showTagFilter)
+        )
+        
+        // 4. 组合右侧按钮：标签筛选 + 设置
+        navigationItem.rightBarButtonItems = [tagFilterButton, settingsButton]
         
         // 多选模式导航按钮
         cancelBarButtonItem = UIBarButtonItem(
@@ -700,12 +750,36 @@ private extension HistoryViewController
         let item = self.dataSource.item(at: indexPath)
         self.selectedItem = item
         
+        // 1. 创建“编辑标签”菜单项
+        let editTagAction = UIMenuItem(title: NSLocalizedString("Edit Tags", comment: "编辑标签"), action: #selector(editTags))
+        UIMenuController.shared.menuItems = [editTagAction] // 添加到系统菜单
+        
+        
         let targetRect = cell.clippingView.frame
         
         self.becomeFirstResponder()
         
         UIMenuController.shared.setTargetRect(targetRect, in: cell)
         UIMenuController.shared.setMenuVisible(true, animated: true)
+    }
+    
+    // 新增：编辑标签跳转方法
+    @objc private func editTags() {
+        guard let selectedItem = self.selectedItem else { return }
+        
+        // 跳转到标签编辑界面（指定 ClipKit 模块的 PasteboardItem，避免歧义）
+        let tagEditor = TagEditorViewController()
+        tagEditor.pasteboardItem = selectedItem as ClipKit.PasteboardItem
+        let navController = UINavigationController(rootViewController: tagEditor)
+        
+        // 弹出编辑界面
+        if let presentedVC = self.presentedViewController {
+            presentedVC.dismiss(animated: true) {
+                self.present(navController, animated: true)
+            }
+        } else {
+            self.present(navController, animated: true)
+        }
     }
     
     @objc func showLocation(_ sender: UIButton)
@@ -902,7 +976,7 @@ extension HistoryViewController
         } else {
             // 普通模式：处理单击/双击逻辑（双击可通过手势识别单独处理）
             self.showMenu(at: indexPath)
-//            handleCellTap(at: indexPath)
+            //            handleCellTap(at: indexPath)
         }
     }
     
@@ -924,10 +998,269 @@ extension HistoryViewController
     
 }
 
-extension HistoryViewController: UIPopoverPresentationControllerDelegate
+extension HistoryViewController
 {
     func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle
     {
         return .none
+    }
+}
+
+// HistoryViewController.swift (修改部分)
+extension HistoryViewController {
+    // Clip/History/HistoryViewController.swift (修正 updateGroupedDataSource 中的 prefetchHandler)
+    private func updateGroupedDataSource() {
+        let fetchRequest = PasteboardItem.historyFetchRequest()
+        
+        // 1. 按 contentTypeRawValue 排序（使用已定义的存储属性）
+        let sectionSort = NSSortDescriptor(keyPath: \PasteboardItem.contentTypeRawValue, ascending: true)
+        let dateSort = NSSortDescriptor(keyPath: \PasteboardItem.date, ascending: false)
+        fetchRequest.sortDescriptors = [sectionSort, dateSort]
+        
+        // 2. 初始化 DataSource（与 makeDataSource 格式一致）
+        dataSource = RSTFetchedResultsTableViewPrefetchingDataSource<PasteboardItem, UIImage>(
+            fetchRequest: fetchRequest,
+            managedObjectContext: DatabaseManager.shared.persistentContainer.viewContext
+        )
+        
+        // 3. 修正：单元格配置闭包（保持与 makeDataSource 一致）
+        dataSource.cellConfigurationHandler = { [weak self] (cell: UITableViewCell, item: PasteboardItem, indexPath: IndexPath) in
+            guard let self = self, let cell = cell as? ClippingTableViewCell else { return }
+            self.configureCell(cell, for: item, at: indexPath)
+        }
+        
+        // 4. 修正：prefetchHandler（显式声明返回类型为 Operation?，正确返回 RSTBlockOperation）
+        dataSource.prefetchHandler = { (item: PasteboardItem, indexPath: IndexPath, completionHandler: @escaping (UIImage?, Error?) -> Void) -> Operation? in
+            // 仅处理图片类型的预加载
+            guard let representation = item.preferredRepresentation, representation.type == .image else {
+                completionHandler(nil, nil) // 非图片类型，直接回调空结果
+                return nil
+            }
+            
+            // 创建 RSTBlockOperation（与 makeDataSource 逻辑一致）
+            let operation = RSTBlockOperation { [weak self] (operation) in
+                // 检查任务是否已取消（避免无效回调）
+                guard !operation.isCancelled else {
+                    completionHandler(nil, NSError(domain: "Clip", code: -2, userInfo: [NSLocalizedDescriptionKey: "Preload cancelled"]))
+                    return
+                }
+                
+                // 处理图片加载（复用 makeDataSource 中的缩放逻辑）
+                if let image = representation.imageValue?.resizing(toFill: CGSize(width: 500, height: 500)) {
+                    completionHandler(image, nil) // 成功：返回图片
+                } else {
+                    // 失败：返回错误信息
+                    let error = NSError(domain: "Clip", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to load image"])
+                    completionHandler(nil, error)
+                }
+            }
+            
+            return operation // 关键：返回 Operation 实例，解决类型不匹配问题
+        }
+        
+        // 5. 修正：prefetchCompletionHandler（保持与 makeDataSource 一致）
+        dataSource.prefetchCompletionHandler = { (cell: UITableViewCell, image: UIImage?, indexPath: IndexPath, error: Error?) in
+            DispatchQueue.main.async {
+                guard let cell = cell as? ClippingTableViewCell else { return }
+                cell.contentImageView.image = image
+                cell.contentImageView.isIndicatingActivity = false // 停止加载指示器
+            }
+        }
+        
+        // 执行查询，加载分组数据
+        do {
+            try dataSource.fetchedResultsController.performFetch()
+        } catch {
+            print("Error fetching grouped items: \(error)")
+        }
+        
+        tableView.reloadData()
+    }
+    
+    // 修正：configureCell 方法（确保调用的属性已定义）
+    private func configureCell(_ cell: ClippingTableViewCell, for item: PasteboardItem, at indexPath: IndexPath) {
+        // 1. 复用原有单元格配置逻辑（从 makeDataSource 的 cellConfigurationHandler 复制）
+        cell.contentLabel.isHidden = false
+        cell.contentImageView.isHidden = true
+        self.updateDate(for: cell, item: item)
+        
+        if let rep = item.preferredRepresentation {
+            cell.titleLabel.text = rep.type.localizedName
+            switch rep.type {
+            case .text: cell.contentLabel.text = rep.stringValue
+            case .attributedText: cell.contentLabel.text = rep.attributedStringValue?.string
+            case .url: cell.contentLabel.text = rep.urlValue?.absoluteString
+            case .image:
+                cell.contentLabel.isHidden = true
+                cell.contentImageView.isHidden = false
+                cell.contentImageView.isIndicatingActivity = true
+            }
+        } else {
+            cell.titleLabel.text = NSLocalizedString("Unknown", comment: "")
+            cell.contentLabel.isHidden = true
+        }
+        
+        // 2. 显示内容类型（修正：使用公开的 contentType 属性）
+        let typeName = item.contentType.localizedName
+        cell.typeLabel.text = typeName
+        cell.typeLabel.textColor = item.contentType.color
+        
+        // 3. 显示标签（修正：使用 updateTags 方法）
+        cell.updateTags(item.tags)
+        
+        // 4. 复用原有位置图标和底部约束逻辑
+        if UserDefaults.shared.showLocationIcon {
+            cell.locationButton.isHidden = (item.location == nil)
+            cell.locationButton.addTarget(self, action: #selector(showLocation(_:)), for: .primaryActionTriggered)
+        } else {
+            cell.locationButton.isHidden = true
+        }
+        
+        if indexPath.row < UserDefaults.shared.historyLimit.rawValue {
+            cell.bottomConstraint.isActive = true
+        } else {
+            cell.bottomConstraint.isActive = false
+        }
+        
+        // 5. 复用多选状态逻辑
+        cell.selectionIndicator.isHidden = !self.isMultiSelectMode
+        let isSelected = self.selectedIndexPaths.contains(indexPath)
+        cell.updateSelectionState(isSelected: isSelected)
+    }
+    // 添加切换分组模式的方法
+    @objc private func toggleGrouping() {
+        isGroupedByType = !isGroupedByType
+        if isGroupedByType {
+            updateGroupedDataSource()
+        } else {
+            updateDataSource() // 恢复原始列表
+        }
+        groupingButton.title = isGroupedByType ? "列表" : "分组"
+    }
+}
+
+// 扩展ContentType以提供本地化名称和颜色
+extension PasteboardItem.ContentType {
+    var localizedName: String {
+        switch self {
+        case .text: return NSLocalizedString("Text", comment: "")
+        case .link: return NSLocalizedString("Link", comment: "")
+        case .image: return NSLocalizedString("Image", comment: "")
+        case .phoneNumber: return NSLocalizedString("Phone", comment: "")
+        case .email: return NSLocalizedString("Email", comment: "")
+        case .address: return NSLocalizedString("Address", comment: "")
+        case .code: return NSLocalizedString("Code", comment: "")
+        case .unknown: return NSLocalizedString("Unknown", comment: "")
+        }
+    }
+    
+    var color: UIColor {
+        switch self {
+        case .text: return .systemBlue
+        case .link: return .systemGreen
+        case .image: return .systemPurple
+        case .phoneNumber: return .systemOrange
+        case .email: return .systemRed
+        case .address: return .systemTeal
+        case .code: return .systemIndigo
+        case .unknown: return .systemGray
+        }
+    }
+}
+
+
+// HistoryViewController.swift (添加部分)
+extension HistoryViewController {
+    // 添加标签筛选按钮
+    private func setupTagFilterButton() {
+        let tagButton = UIBarButtonItem(
+            title: NSLocalizedString("Tags", comment: ""),
+            style: .plain,
+            target: self,
+            action: #selector(showTagFilter)
+        )
+        navigationItem.leftBarButtonItem = tagButton
+    }
+    
+    // 完善：标签筛选按钮点击事件（原有 showTagFilter 方法修正模块歧义）
+    @objc private func showTagFilter() {
+        let tagFilterVC = TagFilterViewController()
+        // 传递当前选中的筛选标签（指定 ClipKit.Tag 类型）
+        tagFilterVC.selectedTags = self.currentFilterTags as [ClipKit.Tag]
+        // 筛选回调：应用筛选条件并更新界面
+        tagFilterVC.onApplyFilter = { [weak self] selectedTags in
+            guard let self = self else { return }
+            self.currentFilterTags = selectedTags as [ClipKit.Tag]
+            self.applyFilters() // 关键：更新数据源
+        }
+        // 弹出筛选界面
+        let navVC = UINavigationController(rootViewController: tagFilterVC)
+        self.present(navVC, animated: true)
+    }
+}
+
+// HistoryViewController.swift（添加部分）
+extension HistoryViewController {
+    // 删除原有的第一个 applyFilters() 方法，保留并完善以下实现
+    private func applyFilters() {
+        // 1. 基础请求：排除已标记删除的项
+        let fetchRequest = PasteboardItem.historyFetchRequest()
+        fetchRequest.relationshipKeyPathsForPrefetching = [#keyPath(PasteboardItem.preferredRepresentation), #keyPath(PasteboardItem.tags)]
+        
+        // 2. 构建筛选谓词数组
+        var predicates = [NSPredicate(format: "%K == NO", #keyPath(PasteboardItem.isMarkedForDeletion))]
+        
+        // 3. 标签筛选（多选）
+        if !currentFilterTags.isEmpty {
+            let tagPredicates = currentFilterTags.map { tag in
+                NSPredicate(format: "ANY tags == %@", tag as CVarArg)
+            }
+            predicates.append(NSCompoundPredicate(andPredicateWithSubpredicates: tagPredicates))
+        }
+        
+        // 4. 内容类型筛选
+        if let contentTypeFilter = currentContentTypeFilter {
+            predicates.append(NSPredicate(format: "contentTypeRawValue == %@", contentTypeFilter.rawValue))
+        }
+        
+        // 5. 搜索筛选（匹配内容或标签名）
+        if let searchText = searchController.searchBar.text, !searchText.isEmpty {
+            let textPredicate = NSPredicate(format: "ANY representations.value CONTAINS[c] %@", searchText)
+            let tagNamePredicate = NSPredicate(format: "ANY tags.name CONTAINS[c] %@", searchText)
+            predicates.append(NSCompoundPredicate(orPredicateWithSubpredicates: [textPredicate, tagNamePredicate]))
+        }
+        
+        // 6. 应用谓词并更新排序
+        fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \PasteboardItem.date, ascending: false)]
+        
+        // 7. 重新初始化数据源并刷新表格
+        dataSource = RSTFetchedResultsTableViewPrefetchingDataSource<PasteboardItem, UIImage>(
+            fetchRequest: fetchRequest,
+            managedObjectContext: DatabaseManager.shared.persistentContainer.viewContext
+        )
+        // 复用原有单元格配置逻辑
+        dataSource.cellConfigurationHandler = makeDataSource().cellConfigurationHandler
+        dataSource.prefetchHandler = makeDataSource().prefetchHandler
+        dataSource.prefetchCompletionHandler = makeDataSource().prefetchCompletionHandler
+        dataSource.placeholderView = makeDataSource().placeholderView
+        
+        // 8. 绑定数据源并刷新
+        tableView.dataSource = dataSource
+        tableView.prefetchDataSource = dataSource
+        do {
+            try dataSource.fetchedResultsController.performFetch()
+        } catch {
+            print("Failed to apply filters: \(error)")
+        }
+        tableView.reloadData()
+    }
+    
+    // 原有：搜索更新代理方法（确保与 applyFilters 联动）
+    func updateSearchResults(for searchController: UISearchController) {
+        // 协议要求的唯一方法，必须实现
+        func updateSearchResults(for searchController: UISearchController) {
+            applyFilters() // 搜索时应用所有筛选条件
+        }
     }
 }
